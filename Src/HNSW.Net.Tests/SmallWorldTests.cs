@@ -22,7 +22,7 @@ namespace HNSW.Net.Tests
         // For cosine distance error can be bigger in theory but for test data it's not the case.
         private const float FloatError = 0.000000596f;
 
-        private IList<float[]> vectors;
+        private IReadOnlyList<float[]> vectors;
 
         /// <summary>
         /// Initializes test resources.
@@ -41,9 +41,6 @@ namespace HNSW.Net.Tests
         public void KNNSearchTest()
         {
             var parameters = new SmallWorld<float[], float>.Parameters();
-            parameters.M = 15;
-            parameters.LevelLambda = 1 / Math.Log(parameters.M);
-
             var graph = new SmallWorld<float[], float>(CosineDistance.NonOptimized);
             graph.BuildGraph(this.vectors, new Random(42), parameters);
 
@@ -84,6 +81,31 @@ namespace HNSW.Net.Tests
             copy.DeserializeGraph(this.vectors, buffer);
 
             Assert.AreEqual(original, copy.Print());
+        }
+
+        /// <summary>
+        /// See if we can create a large graph
+        /// </summary>
+        [TestMethod]
+        public void LargeGraphTest()
+        {
+            var parameters = new SmallWorld<float[], float>.Parameters();
+            var graph = new SmallWorld<float[], float>(CosineDistance.NonOptimized);
+
+            var myRandom = new Random(42);
+            var manyVectors = new List<float[]>();
+            for (int i = 0; i < 100_000; i++)
+            {
+                var randomVector = new float[20];
+                for (int j = 0; j < 20; j++)
+                {
+                    randomVector[j] = (float)myRandom.NextDouble();
+                }
+
+                manyVectors.Add(randomVector);
+            }
+
+            graph.BuildGraph(manyVectors, new Random(42), parameters);
         }
     }
 }

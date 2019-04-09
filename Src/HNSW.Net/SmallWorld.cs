@@ -29,7 +29,7 @@ namespace HNSW.Net
         /// <summary>
         /// The hierarchical small world graph instance.
         /// </summary>
-        private Graph graph;
+        private Graph<TItem, TDistance> graph;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SmallWorld{TItem, TDistance}"/> class.
@@ -47,13 +47,13 @@ namespace HNSW.Net
         {
             /// <summary>
             /// Marker for the Algorithm 3 (SELECT-NEIGHBORS-SIMPLE) from the article.
-            /// Implemented in <see cref="SmallWorld{TItem, TDistance}.NodeAlg3"/>
+            /// Implemented in <see cref="Node.Algorithm3{TItem, TDistance}"/>
             /// </summary>
             SelectSimple,
 
             /// <summary>
             /// Marker for the Algorithm 4 (SELECT-NEIGHBORS-HEURISTIC) from the article.
-            /// Implemented in <see cref="SmallWorld{TItem, TDistance}.NodeAlg4"/>
+            /// Implemented in <see cref="Node.Algorithm4{TItem, TDistance}"/>
             /// </summary>
             SelectHeuristic
         }
@@ -64,10 +64,10 @@ namespace HNSW.Net
         /// <param name="items">The items to connect into the graph.</param>
         /// <param name="generator">The random number generator for building graph.</param>
         /// <param name="parameters">Parameters of the algorithm.</param>
-        public void BuildGraph(IList<TItem> items, Random generator, Parameters parameters)
+        public void BuildGraph(IReadOnlyList<TItem> items, Random generator, Parameters parameters)
         {
-            var graph = new Graph(this.distance, parameters);
-            graph.Create(items, generator);
+            var graph = new Graph<TItem, TDistance>(this.distance, parameters);
+            graph.Build(items, generator);
             this.graph = graph;
         }
 
@@ -79,15 +79,7 @@ namespace HNSW.Net
         /// <returns>The list of found nearest neighbours.</returns>
         public IList<KNNSearchResult> KNNSearch(TItem item, int k)
         {
-            var destination = this.graph.NewNode(-1, item, 0);
-            var neighbourhood = this.graph.KNearest(destination, k);
-            return neighbourhood.Select(
-                n => new KNNSearchResult
-                {
-                    Id = n.Id,
-                    Item = n.Item,
-                    Distance = destination.TravelingCosts.From(n)
-                }).ToList();
+            return this.graph.KNearest(item, k);
         }
 
         /// <summary>
@@ -118,14 +110,14 @@ namespace HNSW.Net
         /// </summary>
         /// <param name="items">The items to assign to the graph's verticies.</param>
         /// <param name="bytes">The serialized parameters and edges.</param>
-        public void DeserializeGraph(IList<TItem> items, byte[] bytes)
+        public void DeserializeGraph(IReadOnlyList<TItem> items, byte[] bytes)
         {
             var formatter = new BinaryFormatter();
             using (var stream = new MemoryStream(bytes))
             {
                 var parameters = (Parameters)formatter.Deserialize(stream);
 
-                var graph = new Graph(this.distance, parameters);
+                var graph = new Graph<TItem, TDistance>(this.distance, parameters);
                 graph.Deserialize(items, bytes.Skip((int)stream.Position).ToArray());
 
                 this.graph = graph;
@@ -160,6 +152,7 @@ namespace HNSW.Net
                 this.ConstructionPruning = 200;
                 this.ExpandBestSelection = false;
                 this.KeepPrunedConnections = true;
+                this.EnableDistanceCacheForConstruction = true;
             }
 
             /// <summary>
@@ -198,6 +191,10 @@ namespace HNSW.Net
             /// See 'keepPrunedConnections' parameter in the article.
             /// </summary>
             public bool KeepPrunedConnections { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether to cache calculated distances at graph construction time.</summary>
+            public bool EnableDistanceCacheForConstruction { get; set; }
         }
 
         /// <summary>
