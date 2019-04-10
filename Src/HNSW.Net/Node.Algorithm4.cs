@@ -21,7 +21,7 @@ namespace HNSW.Net
         /// <typeparam name="TItem">The typeof the items in the small world.</typeparam>
         /// <typeparam name="TDistance">The type of the distance in the small world.</typeparam>
         internal sealed class Algorithm4<TItem, TDistance> : Algorithm<TItem, TDistance>
-            where TDistance : IComparable<TDistance>
+            where TDistance : struct, IComparable<TDistance>
         {
             /// <summary>
             /// Initializes a new instance of the <see cref="Algorithm4{TItem, TDistance}"/> class.

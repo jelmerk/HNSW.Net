@@ -19,7 +19,7 @@ namespace HNSW.Net
     /// <typeparam name="TItem">The type of items to connect into small world.</typeparam>
     /// <typeparam name="TDistance">The type of distance between items (expect any numeric type: float, double, decimal, int, ...).</typeparam>
     public partial class SmallWorld<TItem, TDistance>
-        where TDistance : IComparable<TDistance>
+        where TDistance : struct, IComparable<TDistance>
     {
         /// <summary>
         /// The distance function in the items space.
@@ -93,14 +93,11 @@ namespace HNSW.Net
                 throw new InvalidOperationException("The graph does not exist");
             }
 
-            var formatter = new BinaryFormatter();
             using (var stream = new MemoryStream())
             {
+                var formatter = new BinaryFormatter();
                 formatter.Serialize(stream, this.graph.Parameters);
-
-                var edgeBytes = this.graph.Serialize();
-                stream.Write(edgeBytes, 0, edgeBytes.Length);
-
+                formatter.Serialize(stream, this.graph.Serialize());
                 return stream.ToArray();
             }
         }
@@ -112,13 +109,14 @@ namespace HNSW.Net
         /// <param name="bytes">The serialized parameters and edges.</param>
         public void DeserializeGraph(IReadOnlyList<TItem> items, byte[] bytes)
         {
-            var formatter = new BinaryFormatter();
             using (var stream = new MemoryStream(bytes))
             {
+                var formatter = new BinaryFormatter();
                 var parameters = (Parameters)formatter.Deserialize(stream);
+                var graphBytes = (byte[])formatter.Deserialize(stream);
 
                 var graph = new Graph<TItem, TDistance>(this.distance, parameters);
-                graph.Deserialize(items, bytes.Skip((int)stream.Position).ToArray());
+                graph.Deserialize(items, graphBytes);
 
                 this.graph = graph;
             }
@@ -129,7 +127,7 @@ namespace HNSW.Net
         /// Mostly for debug and test purposes.
         /// </summary>
         /// <returns>String representation of the graph's edges.</returns>
-        internal string Print()
+        public string Print()
         {
             return this.graph.Print();
         }
@@ -193,7 +191,8 @@ namespace HNSW.Net
             public bool KeepPrunedConnections { get; set; }
 
             /// <summary>
-            /// Gets or sets a value indicating whether to cache calculated distances at graph construction time.</summary>
+            /// Gets or sets a value indicating whether to cache calculated distances at graph construction time.
+            /// </summary>
             public bool EnableDistanceCacheForConstruction { get; set; }
         }
 

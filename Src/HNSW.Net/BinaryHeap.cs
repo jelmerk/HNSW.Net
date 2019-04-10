@@ -122,7 +122,7 @@ namespace HNSW.Net
         {
             while (i > 0)
             {
-                int p = (i - 1) / 2;
+                int p = (i - 1) >> 1;
                 if (this.Comparer.Compare(this.Buffer[i], this.Buffer[p]) <= 0)
                 {
                     break;

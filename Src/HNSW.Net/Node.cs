@@ -11,6 +11,7 @@ namespace HNSW.Net
     /// <summary>
     /// The implementaion of the node in hnsw graph.
     /// </summary>
+    [Serializable]
     internal partial struct Node
     {
         private int id;
@@ -52,7 +53,7 @@ namespace HNSW.Net
         /// <typeparam name="TItem">The typeof the items in the small world.</typeparam>
         /// <typeparam name="TDistance">The type of the distance in the small world.</typeparam>
         internal abstract class Algorithm<TItem, TDistance>
-            where TDistance : IComparable<TDistance>
+            where TDistance : struct, IComparable<TDistance>
         {
             /// <summary>
             /// Initializes a new instance of the <see cref="Algorithm{TItem, TDistance}"/> class
@@ -69,7 +70,7 @@ namespace HNSW.Net
             protected Graph<TItem, TDistance>.Core GraphCore { get; private set; }
 
             /// <summary>
-            /// Creates a new instance of the <see cref="Net.Node"/> struct.
+            /// Creates a new instance of the <see cref="Node"/> struct.
             /// Controls the exact type of connection lists.
             /// </summary>
             /// <param name="nodeId">The identifier of the node.</param>

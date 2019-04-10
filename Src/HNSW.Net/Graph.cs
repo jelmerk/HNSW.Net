@@ -18,7 +18,7 @@ namespace HNSW.Net
     /// <typeparam name="TItem">The type of items to connect into small world.</typeparam>
     /// <typeparam name="TDistance">The type of distance between items (expect any numeric type: float, double, decimal, int, ...).</typeparam>
     internal partial class Graph<TItem, TDistance>
-        where TDistance : IComparable<TDistance>
+        where TDistance : struct, IComparable<TDistance>
     {
         /// <summary>
         /// The distance.
@@ -65,9 +65,11 @@ namespace HNSW.Net
                 return;
             }
 
-            var core = new Core(items, this.distance, this.Parameters, generator);
-            var entryPoint = core.Nodes[0];
+            var core = new Core(this.distance, this.Parameters, items);
+            core.AllocateNodes(generator);
+            core.AllocateDistanceCache();
 
+            var entryPoint = core.Nodes[0];
             for (int nodeId = 1; nodeId < core.Nodes.Count; ++nodeId)
             {
                 /*
@@ -168,7 +170,7 @@ namespace HNSW.Net
         }
 
         /// <summary>
-        /// Serializes edges of the graph.
+        /// Serializes core of the graph.
         /// </summary>
         /// <returns>Bytes representing edges.</returns>
         internal byte[] Serialize()
@@ -176,17 +178,8 @@ namespace HNSW.Net
             using (var stream = new MemoryStream())
             {
                 var formatter = new BinaryFormatter();
-                formatter.Serialize(stream, this.entryPoint.Id);
-                formatter.Serialize(stream, this.entryPoint.MaxLayer);
-
-                for (int layer = this.entryPoint.MaxLayer; layer >= 0; --layer)
-                {
-                    BFS(this.core, this.entryPoint, layer, (node) =>
-                    {
-                        formatter.Serialize(stream, node);
-                    });
-                }
-
+                formatter.Serialize(stream, this.core.Serialize());
+                formatter.Serialize(stream, this.entryPoint);
                 return stream.ToArray();
             }
         }
@@ -201,13 +194,13 @@ namespace HNSW.Net
             using (var stream = new MemoryStream(bytes))
             {
                 var formatter = new BinaryFormatter();
-                int entryId = (int)formatter.Deserialize(stream);
-                int maxLayer = (int)formatter.Deserialize(stream);
 
-                for (int level = maxLayer; level >= items.Count; --level)
-                {
-                    var edges = (Dictionary<int, List<int>>)formatter.Deserialize(stream);
-                }
+                var coreBytes = (byte[])formatter.Deserialize(stream);
+                var core = new Core(this.distance, this.Parameters, items);
+                core.Deserialize(coreBytes);
+
+                this.entryPoint = (Node)formatter.Deserialize(stream);
+                this.core = core;
             }
         }
 

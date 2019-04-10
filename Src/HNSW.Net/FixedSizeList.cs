@@ -15,6 +15,7 @@ namespace HNSW.Net
     /// </summary>
     /// <typeparam name="T">The type of items in the array.</typeparam>
     [SuppressMessage("Naming", "CA1710:Identifiers should have correct suffix", Justification = "By design")]
+    [Serializable]
     public class FixedSizeList<T> : IList<T>, IReadOnlyList<T>
     {
         private readonly T[] buffer;
