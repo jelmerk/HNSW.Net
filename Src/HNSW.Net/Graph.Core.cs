@@ -28,7 +28,7 @@ namespace HNSW.Net
             /// <summary>
             /// The distance cache.
             /// </summary>
-            private TDistance?[] distanceCache;
+            private readonly SmallDistanceCache<TDistance> distanceCache;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="Core"/> class.
@@ -42,7 +42,7 @@ namespace HNSW.Net
                 this.Parameters = parameters;
                 this.Items = items;
 
-                switch (parameters.NeighbourHeuristic)
+                switch (this.Parameters.NeighbourHeuristic)
                 {
                     case SmallWorld<TItem, TDistance>.NeighbourSelectionHeuristic.SelectSimple:
                         this.Algorithm = new Node.Algorithm3<TItem, TDistance>(this);
@@ -50,6 +50,11 @@ namespace HNSW.Net
                     case SmallWorld<TItem, TDistance>.NeighbourSelectionHeuristic.SelectHeuristic:
                         this.Algorithm = new Node.Algorithm4<TItem, TDistance>(this);
                         break;
+                }
+
+                if (this.Parameters.EnableDistanceCacheForConstruction)
+                {
+                    this.distanceCache = new SmallDistanceCache<TDistance>(this.Items.Count);
                 }
             }
 
@@ -79,25 +84,13 @@ namespace HNSW.Net
             /// <param name="generator">The random number generator to assign layers.</param>
             internal void AllocateNodes(Random generator)
             {
-                var nodes = new FixedSizeList<Node>(this.Items.Count);
+                var nodes = new List<Node>(this.Items.Count);
                 for (int id = 0; id < this.Items.Count; ++id)
                 {
                     nodes.Add(this.Algorithm.NewNode(id, RandomLayer(generator, this.Parameters.LevelLambda)));
                 }
 
                 this.Nodes = nodes;
-            }
-
-            /// <summary>
-            /// Initializes caches for distance values.
-            /// </summary>
-            internal void AllocateDistanceCache()
-            {
-                if (this.Parameters.EnableDistanceCacheForConstruction)
-                {
-                    var capacity = (this.Items.Count * (this.Items.Count + 1)) >> 1;
-                    this.distanceCache = new TDistance?[capacity];
-                }
             }
 
             /// <summary>
@@ -123,7 +116,7 @@ namespace HNSW.Net
                 using (var stream = new MemoryStream(bytes))
                 {
                     var formatter = new BinaryFormatter();
-                    this.Nodes = (FixedSizeList<Node>)formatter.Deserialize(stream);
+                    this.Nodes = (List<Node>)formatter.Deserialize(stream);
                 }
             }
 
@@ -135,21 +128,16 @@ namespace HNSW.Net
             /// <returns>The distance beetween items.</returns>
             internal TDistance GetDistance(int fromId, int toId)
             {
-                TDistance? result;
-                if (this.distanceCache != null)
+                TDistance result;
+                if (this.distanceCache != null
+                && this.distanceCache.TryGetValue(fromId, toId, out result))
                 {
-                    int key = fromId > toId ? ((fromId * (fromId + 1)) >> 1) + toId : ((toId * (toId + 1)) >> 1) + fromId;
-                    if ((result = this.distanceCache[key]) != null)
-                    {
-                        return result.Value;
-                    }
-
-                    result = this.distance(this.Items[fromId], this.Items[toId]);
-                    this.distanceCache[key] = result;
-                    return result.Value;
+                    return result;
                 }
 
-                return this.distance(this.Items[fromId], this.Items[toId]);
+                result = this.distance(this.Items[fromId], this.Items[toId]);
+                this.distanceCache?.SetValue(fromId, toId, result);
+                return result;
             }
 
             /// <summary>

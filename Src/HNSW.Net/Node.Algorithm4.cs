@@ -33,23 +33,6 @@ namespace HNSW.Net
             }
 
             /// <inheritdoc/>
-            internal override Node NewNode(int nodeId, int maxLayer)
-            {
-                var connections = new List<IList<int>>(maxLayer + 1);
-                for (int layer = 0; layer <= maxLayer; ++layer)
-                {
-                    int layerM = this.GetM(layer);
-                    connections.Add(new List<int>(layerM));
-                }
-
-                return new Node
-                {
-                    id = nodeId,
-                    connections = connections
-                };
-            }
-
-            /// <inheritdoc/>
             internal override IList<int> SelectBestForConnecting(IList<int> candidatesIds, TravelingCosts<int, TDistance> travelingCosts, int layer)
             {
                 /*

@@ -76,7 +76,22 @@ namespace HNSW.Net
             /// <param name="nodeId">The identifier of the node.</param>
             /// <param name="maxLayer">The max layer where the node is presented.</param>
             /// <returns>The new instance.</returns>
-            internal abstract Node NewNode(int nodeId, int maxLayer);
+            internal virtual Node NewNode(int nodeId, int maxLayer)
+            {
+                var connections = new List<IList<int>>(maxLayer + 1);
+                for (int layer = 0; layer <= maxLayer; ++layer)
+                {
+                    // M + 1 neighbours to not realloc in AddConnection when the level is full
+                    int layerM = this.GetM(layer) + 1;
+                    connections.Add(new List<int>(layerM));
+                }
+
+                return new Node
+                {
+                    id = nodeId,
+                    connections = connections
+                };
+            }
 
             /// <summary>
             /// The algorithm which selects best neighbours from the candidates for the given node.

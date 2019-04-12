@@ -19,11 +19,14 @@ namespace HNSW.Net.Demo
         public static void Main()
         {
             var parameters = new SmallWorld<float[], float>.Parameters();
-            var graph = new SmallWorld<float[], float>(CosineDistance.NonOptimized);
+            parameters.EnableDistanceCacheForConstruction = true;
+            var graph = new SmallWorld<float[], float>(CosineDistance.SIMDForUnits);
 
             var vectorsGenerator = new Random(42);
             var randomVectors = new List<float[]>();
-            for (int i = 0; i < 40_000; i++)
+
+            // The upper limit for the current distance cache implementation is 65535 points
+            for (int i = 0; i < 60_000; i++)
             {
                 var randomVector = new float[20];
                 for (int j = 0; j < 20; j++)
@@ -31,6 +34,7 @@ namespace HNSW.Net.Demo
                     randomVector[j] = (float)vectorsGenerator.NextDouble();
                 }
 
+                VectorUtils.NormalizeSIMD(randomVector);
                 randomVectors.Add(randomVector);
             }
 
