@@ -11,7 +11,7 @@ namespace HNSW.Net
     using System.Runtime.Serialization.Formatters.Binary;
 
     /// <content>
-    /// The implemnation of graph core structure.
+    /// The implementation of graph core structure.
     /// </content>
     internal partial class Graph<TItem, TDistance>
     {
@@ -28,7 +28,7 @@ namespace HNSW.Net
             /// <summary>
             /// The distance cache.
             /// </summary>
-            private readonly SmallDistanceCache<TDistance> distanceCache;
+            private readonly DistanceCache<TDistance> distanceCache;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="Core"/> class.
@@ -54,7 +54,7 @@ namespace HNSW.Net
 
                 if (this.Parameters.EnableDistanceCacheForConstruction)
                 {
-                    this.distanceCache = new SmallDistanceCache<TDistance>(this.Items.Count);
+                    this.distanceCache = new DistanceCache<TDistance>(this.Items.Count);
                 }
             }
 
