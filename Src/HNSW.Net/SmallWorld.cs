@@ -136,6 +136,7 @@ namespace HNSW.Net
         /// Parameters of the algorithm.
         /// </summary>
         [SuppressMessage("Design", "CA1034:Nested types should not be visible", Justification = "By Design")]
+        [SuppressMessage("Usage", "CA2235:Mark all non-serializable fields", Justification = "Analyzer bug: https://github.com/dotnet/roslyn-analyzers/issues/2156")]
         [Serializable]
         public class Parameters
         {

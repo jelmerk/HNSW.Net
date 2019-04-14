@@ -48,6 +48,7 @@ namespace HNSW.Net.Tests
             {
                 var result = graph.KNNSearch(this.vectors[i], 20);
                 var best = result.OrderBy(r => r.Distance).First();
+                Assert.AreEqual(20, result.Count);
                 Assert.AreEqual(i, best.Id);
                 Assert.AreEqual(0, best.Distance, FloatError);
             }

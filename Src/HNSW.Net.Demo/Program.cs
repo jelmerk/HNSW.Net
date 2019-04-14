@@ -7,6 +7,7 @@ namespace HNSW.Net.Demo
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
 
     /// <summary>
     /// The demo program
@@ -14,7 +15,7 @@ namespace HNSW.Net.Demo
     public static class Program
     {
         /// <summary>
-        /// Etry point.
+        /// Entry point.
         /// </summary>
         public static void Main()
         {
@@ -25,8 +26,7 @@ namespace HNSW.Net.Demo
             var vectorsGenerator = new Random(42);
             var randomVectors = new List<float[]>();
 
-            // The upper limit for the current distance cache implementation is 65535 points
-            for (int i = 0; i < 60_000; i++)
+            for (int i = 0; i < 40_000; i++)
             {
                 var randomVector = new float[20];
                 for (int j = 0; j < 20; j++)
@@ -38,7 +38,9 @@ namespace HNSW.Net.Demo
                 randomVectors.Add(randomVector);
             }
 
+            var clock = Stopwatch.StartNew();
             graph.BuildGraph(randomVectors, new Random(42), parameters);
+            Console.WriteLine(clock.Elapsed.TotalMilliseconds);
         }
     }
 }

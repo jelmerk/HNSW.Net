@@ -36,6 +36,11 @@ namespace HNSW.Net
         private Node entryPoint;
 
         /// <summary>
+        /// The knn searcher.
+        /// </summary>
+        private Searcher searcher;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="Graph{TItem, TDistance}"/> class.
         /// </summary>
         /// <param name="distance">The distance function.</param>
@@ -69,6 +74,10 @@ namespace HNSW.Net
             core.AllocateNodes(generator);
 
             var entryPoint = core.Nodes[0];
+            var searcher = new Searcher(core);
+            Func<int, int, TDistance> nodeDistance = core.GetDistance;
+            var neighboursIdsBuffer = new List<int>(core.Algorithm.GetM(0) + 1);
+
             for (int nodeId = 1; nodeId < core.Nodes.Count; ++nodeId)
             {
                 /*
@@ -95,18 +104,19 @@ namespace HNSW.Net
                 // zoom in and find the best peer on the same level as newNode
                 var bestPeer = entryPoint;
                 var currentNode = core.Nodes[nodeId];
-                var currentNodeTravelingCosts = new TravelingCosts<int, TDistance>(core.GetDistance, nodeId);
+                var currentNodeTravelingCosts = new TravelingCosts<int, TDistance>(nodeDistance, nodeId);
                 for (int layer = bestPeer.MaxLayer; layer > currentNode.MaxLayer; --layer)
                 {
-                    var bestPeerId = KNearestAtLayer(core, bestPeer.Id, currentNodeTravelingCosts, layer, 1).Single();
-                    bestPeer = core.Nodes[bestPeerId];
+                    searcher.RunKnnAtLayer(bestPeer.Id, currentNodeTravelingCosts, neighboursIdsBuffer, layer, 1);
+                    bestPeer = core.Nodes[neighboursIdsBuffer[0]];
+                    neighboursIdsBuffer.Clear();
                 }
 
                 // connecting new node to the small world
                 for (int layer = Math.Min(currentNode.MaxLayer, entryPoint.MaxLayer); layer >= 0; --layer)
                 {
-                    var potentialNeighboursIds = KNearestAtLayer(core, bestPeer.Id, currentNodeTravelingCosts, layer, this.Parameters.ConstructionPruning);
-                    var bestNeighboursIds = core.Algorithm.SelectBestForConnecting(potentialNeighboursIds, currentNodeTravelingCosts, layer);
+                    searcher.RunKnnAtLayer(bestPeer.Id, currentNodeTravelingCosts, neighboursIdsBuffer, layer, this.Parameters.ConstructionPruning);
+                    var bestNeighboursIds = core.Algorithm.SelectBestForConnecting(neighboursIdsBuffer, currentNodeTravelingCosts, layer);
 
                     for (int i = 0; i < bestNeighboursIds.Count; ++i)
                     {
@@ -120,6 +130,8 @@ namespace HNSW.Net
                             bestPeer = core.Nodes[newNeighbourId];
                         }
                     }
+
+                    neighboursIdsBuffer.Clear();
                 }
 
                 // zoom out to the highest level
@@ -132,6 +144,7 @@ namespace HNSW.Net
             // construction is done
             this.core = core;
             this.entryPoint = entryPoint;
+            this.searcher = searcher;
         }
 
         /// <summary>
@@ -153,20 +166,23 @@ namespace HNSW.Net
 
             var bestPeer = this.entryPoint;
             var destiantionTravelingCosts = new TravelingCosts<int, TDistance>(RuntimeDistance, -1);
+            var resultIds = new List<int>(k + 1);
+
             for (int layer = this.entryPoint.MaxLayer; layer > 0; --layer)
             {
-                var bestPeerId = KNearestAtLayer(this.core, bestPeer.Id, destiantionTravelingCosts, layer, 1).Single();
-                bestPeer = this.core.Nodes[bestPeerId];
+                this.searcher.RunKnnAtLayer(bestPeer.Id, destiantionTravelingCosts, resultIds, layer, 1);
+                bestPeer = this.core.Nodes[resultIds[0]];
+                resultIds.Clear();
             }
 
-            return KNearestAtLayer(this.core, bestPeer.Id, destiantionTravelingCosts, 0, k)
-                .Select(id => new SmallWorld<TItem, TDistance>.KNNSearchResult
-                {
-                    Id = id,
-                    Item = this.core.Items[id],
-                    Distance = RuntimeDistance(id, -1)
-                })
-                .ToList();
+            this.searcher.RunKnnAtLayer(bestPeer.Id, destiantionTravelingCosts, resultIds, 0, k);
+
+            return resultIds.Select(id => new SmallWorld<TItem, TDistance>.KNNSearchResult
+            {
+                Id = id,
+                Item = this.core.Items[id],
+                Distance = RuntimeDistance(id, -1)
+            }).ToList();
         }
 
         /// <summary>
@@ -224,93 +240,6 @@ namespace HNSW.Net
             }
 
             return buffer.ToString();
-        }
-
-        /// <summary>
-        /// The implementaiton of SEARCH-LAYER(q, ep, ef, lc) algorithm.
-        /// Article: Section 4. Algorithm 2.
-        /// </summary>
-        /// <param name="core">The core of the graph.</param>
-        /// <param name="entryPointId">The identifier of the entry point for the search.</param>
-        /// <param name="destinationTravelingCosts">The traveling costs for the search target.</param>
-        /// <param name="layer">The layer to perform search at.</param>
-        /// <param name="k">The number of the nearest neighbours to get from the layer.</param>
-        /// <returns>The list of identifiers of the nearest neighbours at the level.</returns>
-        private static IList<int> KNearestAtLayer(Core core, int entryPointId, TravelingCosts<int, TDistance> destinationTravelingCosts, int layer, int k)
-        {
-            /*
-             * v ← ep // set of visited elements
-             * C ← ep // set of candidates
-             * W ← ep // dynamic list of found nearest neighbors
-             * while │C│ > 0
-             *   c ← extract nearest element from C to q
-             *   f ← get furthest element from W to q
-             *   if distance(c, q) > distance(f, q)
-             *     break // all elements in W are evaluated
-             *   for each e ∈ neighbourhood(c) at layer lc // update C and W
-             *     if e ∉ v
-             *       v ← v ⋃ e
-             *       f ← get furthest element from W to q
-             *       if distance(e, q) < distance(f, q) or │W│ < ef
-             *         C ← C ⋃ e
-             *         W ← W ⋃ e
-             *         if │W│ > ef
-             *           remove furthest element from W to q
-             * return W
-             */
-
-            // prepare tools
-            IComparer<int> fartherIsOnTop = destinationTravelingCosts;
-            IComparer<int> closerIsOnTop = fartherIsOnTop.Reverse();
-
-            // prepare collections
-            // TODO: Optimize by providing buffers
-            var resultHeap = new BinaryHeap<int>(new List<int>(k + 1) { entryPointId }, fartherIsOnTop);
-            var expansionHeap = new BinaryHeap<int>(new List<int>() { entryPointId }, closerIsOnTop);
-
-            // TODO: WARNING never tested performance on huge sets
-            Span<int> visited = stackalloc int[(core.Nodes.Count >> 5) + 1];
-
-            // run bfs
-            visited.SetBit(entryPointId, true);
-            while (expansionHeap.Buffer.Count > 0)
-            {
-                // get next candidate to check and expand
-                var toExpandId = expansionHeap.Pop();
-                var farthestResultId = resultHeap.Buffer[0];
-                if (DistanceUtils.Gt(destinationTravelingCosts.From(toExpandId), destinationTravelingCosts.From(farthestResultId)))
-                {
-                    // the closest candidate is farther than farthest result
-                    break;
-                }
-
-                // expand candidate
-                var neighboursIds = core.Nodes[toExpandId][layer];
-                for (int i = 0; i < neighboursIds.Count; ++i)
-                {
-                    int neighbourId = neighboursIds[i];
-                    if (!visited.CheckBit(neighbourId))
-                    {
-                        // enque perspective neighbours to expansion list
-                        farthestResultId = resultHeap.Buffer[0];
-                        if (resultHeap.Buffer.Count < k
-                        || DistanceUtils.Lt(destinationTravelingCosts.From(neighbourId), destinationTravelingCosts.From(farthestResultId)))
-                        {
-                            expansionHeap.Push(neighbourId);
-                            resultHeap.Push(neighbourId);
-                            if (resultHeap.Buffer.Count > k)
-                            {
-                                resultHeap.Pop();
-                            }
-                        }
-
-                        // update visited list
-                        visited.SetBit(neighbourId, true);
-                    }
-                }
-            }
-
-            return resultHeap.Buffer;
         }
     }
 }

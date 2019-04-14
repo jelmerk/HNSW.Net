@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.1;net462</TargetFrameworks>
+    <Platforms>AnyCPU; x86; x64</Platforms>
+  </PropertyGroup>
+  
+  <PropertyGroup>
     <!-- generic common properties -->
     <VstsBuildNumber>$(BUILD_BUILDNUMBER)</VstsBuildNumber>
     <BuildLabel>$([System.Text.RegularExpressions.Regex]::Replace($(VstsBuildNumber), ".*(\d{4}\.\d{1,2}\.\d{1,2}\.\d+).*", "$1"))</BuildLabel>
@@ -15,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
   
-  <PropertyGroup>
+  <PropertyGroup Condition=" '$(TargetFramework)' != 'netcoreapp2.1' ">
     <!-- code analysis -->
     <RunCodeAnalysisOnThisProject>true</RunCodeAnalysisOnThisProject>
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>

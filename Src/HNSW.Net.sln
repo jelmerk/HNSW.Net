@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HNSW.Net", "HNSW.Net\HNSW.N
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HNSW.Net.Tests", "HNSW.Net.Tests\HNSW.Net.Tests.csproj", "{F1C038AB-3654-45F3-BE98-378D4EDC2762}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HNSW.Net.Demo", "HNSW.Net.Demo\HNSW.Net.Demo.csproj", "{6F62C4BE-5D1C-4302-9813-E707EB902221}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HNSW.Net.Demo", "HNSW.Net.Demo\HNSW.Net.Demo.csproj", "{6F62C4BE-5D1C-4302-9813-E707EB902221}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

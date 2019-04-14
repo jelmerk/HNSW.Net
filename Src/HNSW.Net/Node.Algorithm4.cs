@@ -69,12 +69,12 @@ namespace HNSW.Net
                 var candidatesHeap = new BinaryHeap<int>(candidatesIds, closerIsOnTop);
 
                 // expand candidates option is enabled
-                if (this.GraphCore.Parameters.ExpandBestSelection)
+                if (this.graphCore.Parameters.ExpandBestSelection)
                 {
                     var visited = new HashSet<int>(candidatesHeap.Buffer);
                     foreach (var candidateId in candidatesHeap.Buffer)
                     {
-                        foreach (var candidateNeighbourId in this.GraphCore.Nodes[candidateId][layer])
+                        foreach (var candidateNeighbourId in this.graphCore.Nodes[candidateId][layer])
                         {
                             if (!visited.Contains(candidateNeighbourId))
                             {
@@ -97,14 +97,14 @@ namespace HNSW.Net
                     {
                         resultHeap.Push(candidateId);
                     }
-                    else if (this.GraphCore.Parameters.KeepPrunedConnections)
+                    else if (this.graphCore.Parameters.KeepPrunedConnections)
                     {
                         discardedHeap.Push(candidateId);
                     }
                 }
 
                 // keep pruned option is enabled
-                if (this.GraphCore.Parameters.KeepPrunedConnections)
+                if (this.graphCore.Parameters.KeepPrunedConnections)
                 {
                     while (discardedHeap.Buffer.Any() && resultHeap.Buffer.Count < layerM)
                     {

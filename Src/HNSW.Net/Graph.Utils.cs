@@ -40,5 +40,51 @@ namespace HNSW.Net
                 }
             }
         }
+
+        /// <summary>
+        /// Bitset for tracking visited nodes.
+        /// </summary>
+        internal class VisitedBitSet
+        {
+            private int[] buffer;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="VisitedBitSet"/> class.
+            /// </summary>
+            /// <param name="nodesCount">The number of nodes to track in the set.</param>
+            internal VisitedBitSet(int nodesCount)
+            {
+                this.buffer = new int[(nodesCount >> 5) + 1];
+            }
+
+            /// <summary>
+            /// Checks whether the node is already in the set.
+            /// </summary>
+            /// <param name="nodeId">The identifier of the node.</param>
+            /// <returns>True if the node is in the set.</returns>
+            internal bool Contains(int nodeId)
+            {
+                int carrier = this.buffer[nodeId >> 5];
+                return ((1 << (nodeId & 31)) & carrier) != 0;
+            }
+
+            /// <summary>
+            /// Adds the node id to the set.
+            /// </summary>
+            /// <param name="nodeId">The node id to add.</param>
+            internal void Add(int nodeId)
+            {
+                int mask = 1 << (nodeId & 31);
+                this.buffer[nodeId >> 5] |= mask;
+            }
+
+            /// <summary>
+            /// Clears the set.
+            /// </summary>
+            internal void Clear()
+            {
+                Array.Clear(this.buffer, 0, this.buffer.Length);
+            }
+        }
     }
 }
