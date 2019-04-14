@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp2.1;net462</TargetFrameworks>
     <Platforms>AnyCPU; x86; x64</Platforms>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
   </PropertyGroup>
   
   <PropertyGroup>
